@@ -1,0 +1,142 @@
+#!/bin/sh
+#
+#    findstr
+#
+#        Copyright(c) rio@Kosuge Lab. 2001
+#
+#
+# 名称
+#     findstr  -文字列をサーチする-
+#
+# 書式
+#     findstr [-iv] string [finename]
+#
+# 解説
+#     指定した文字列を含むファイルを，カレントディレクトリおよび
+#     そのサブディレクトリから探しだし表示する. 
+#
+#     文字列は grep コマンドで使用する正規表現で指定してもよい. 
+#     空白や特殊文字を含んだ文字列をサーチする場合にはクォー
+#     ティングをしておく事. 
+#
+#     捜し出すファイルを指定する事も可能. 
+#     ただし捜し出すファイル自体に特殊文字が含まれている時には
+#     指定の仕方に注意すること. 
+#
+#     -i   大文字と小文字の区別をしない. 
+#
+#     -v   冗長モード. 文字列を含む行を出力する. 
+#          このオプションが無い場合はファイル名だけを表示. 
+#
+#     -a   冗長モード. 検索対象を全てのファイルに広げる. 
+#
+# 戻り値
+#     0    正常終了
+#     1    ユーザの指定間違い
+#
+###################################################################
+CMDNAME=`basename $0`
+USAGE="Usage: $CMDNAME [-iva] string [finename]"
+STRING=               # 捜し出す文字列
+FILENAME=             # 捜し出すファイル
+FILENAME_C=           # 捜し出すC言語ファイル
+FILENAME_H=           # 捜し出すヘッダファイル
+FILENAME_M=           # 捜し出すMakefile
+I=                    # 大文字小文字の区別をするかしないかのオプション
+L=-l                  # 行を表示するかしないかのオプション
+ALL_FILES_FLAG=FALSE  # 全てのファイルからの検索オプション
+
+#
+# オプションの処理
+#
+if [ "$OPTIND" = 1 ]; then
+	while getopts iva OPT
+	do
+	    case $OPT in 
+		i)  I=-i    # 大文字小文字の区別をしない
+		    ;;
+		v)  L=      # 冗長モード
+		    ;;
+		a)  ALL_FILES_FLAG=TRUE   # 冗長モード
+		    ;;
+		\?) echo "$USAGE" 1>&2
+		    exit 1
+		    ;;
+	    esac
+	done
+	shift `expr $OPTIND - 1`
+else 
+	USAGE="Usage: $CMDNAME [-iva] string [finename]"
+	while :
+	do
+	    case $1 in
+		-i) I=-i    # 大文字小文字の区別をしない
+		    shift
+		    ;;
+		-v) L=      # 冗長モード
+		    shift
+		    ;;
+		-a) ALL_FILES_FLAG=1      # 冗長モード
+		    shift
+		    ;;
+		--) shift
+		    break
+		    ;;
+		-*) echo "$USAGE" 1>&2
+		    exit 1
+		    ;;
+		 *) break
+		    ;;
+	    esac
+	done
+fi
+
+#
+# 引数の数が正しいかどうかをチェック
+#
+if [ $# -lt 1 -o $# -gt 2 ]; then
+    echo "$USAGE" 1>&2
+    exit 1
+fi
+
+STRING=$1
+FILENAME=${2:-"*"}
+FILENAME_C=${2:-"*.c"}
+FILENAME_H=${2:-"*.h"}
+FILENAME_M=${2:-"Makefile"}
+
+#
+# システムの合わせて下のいずれかを使用する. 
+#
+#find . \( -type f -o type l \) -name "$FILENAME" -print |
+#    xargs -e grep $I $L -- "$STRING" /dev/null
+#
+
+
+#
+# for searching All files
+#
+if [ "$ALL_FILES_FLAG" = TRUE ]; then
+    find . \( -type f -o -type l \) -name "$FILENAME" \
+	-exec grep $I $L -- "$STRING" {} /dev/null \;
+else
+#
+# for C language file
+#
+find . \( -type f -o -type l \) -name "$FILENAME_C" \
+    -exec grep $I $L -- "$STRING" {} /dev/null \;
+#
+# for Header file
+#
+find . \( -type f -o -type l \) -name "$FILENAME_H" \
+    -exec grep $I $L -- "$STRING" {} /dev/null \;
+#
+# for Makefile
+#
+find . \( -type f -o -type l \) -name "$FILENAME_M" \
+    -exec grep $I $L -- "$STRING" {} /dev/null \;
+
+fi
+
+
+exit 0
